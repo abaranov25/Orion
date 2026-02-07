@@ -1,0 +1,136 @@
+"""
+This primitive an implementation of Amazon's Chronos2 model for timeseries forecasting.
+
+The model implementation can be found at
+https://huggingface.co/amazon/chronos-2
+
+Note: This primitive assumes that Chronos2 doesn't care about specific timestamps 
+of the data. We fill in the timestamps with a linear sequence of timestamps in order
+for the model to work.
+"""
+
+import sys
+import torch
+import numpy as np
+import pandas as pd
+# if sys.version_info < (3, 11):
+#     msg = (
+#         '`timesfm` requires Python >= 3.11 and your '
+#         f'python version is {sys.version}.\n'
+#         'Make sure you are using Python 3.11 or later.\n'
+#     )
+#     raise RuntimeError(msg)
+
+try:
+    from chronos import Chronos2Pipeline
+except ImportError as ie:
+    ie.msg += (
+        '\n\nIt seems like `chronos` is not installed.\n'
+        'Please install `chronos` using:\n'
+        '\n    pip install chronos'
+    )
+    raise
+
+
+class Chronos2:
+    """Chronos2 model for timeseries forecasting.
+
+    Args:
+        window_size (int):
+            Window size of each sample. Default to 256.
+        step (int):
+            Stride length between samples. Default to 1.
+        pred_len (int):
+            Prediction horizon length. Default to 1.
+        repo_id (str):
+            Directory of the model checkpoint. Default to "amazon/chronos-2"
+        batch_size(int):
+            Size of one batch. Default to 32.
+        freq (int):
+            Frequency. TimesFM expects a categorical indicator valued in {0, 1, 2}.
+            Default to 0.
+        target (int):
+            Index of target column in multivariate case. Default to 0.
+        start_time (datetime):
+            Start time of the timeseries. Default to Jan 1, 2020 00:00:00.
+        time_interval (int):
+            Time interval between two samples in seconds. Default to 600.
+    """
+
+    def __init__(self,
+                 window_size=256,
+                 pred_len=1,
+                 repo_id="amazon/chronos-2",
+                 batch_size=32,
+                 target=0,
+                 start_time=pd.to_datetime("2000-01-01 00:00:00"),
+                 time_interval=600):
+
+        self.window_size = window_size
+        self.pred_len = pred_len
+        self.batch_size = batch_size
+        self.target = f"{target}"
+        self.start_time = start_time
+        self.time_interval = pd.Timedelta(seconds=time_interval)
+
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model = Chronos2Pipeline.from_pretrained(repo_id, device_map=device)
+
+    def predict(self, X, force=False):
+        """Forecasting timeseries
+
+        Args:
+            X (ndarray):
+                input timeseries.
+        Return:
+            ndarray:
+                forecasted timeseries.
+        """
+        n_windows, window_size, n_features = X.shape
+
+        outs = []
+
+        for i in range(0, n_windows, self.batch_size):
+            x_batch = self.convert_to_df(X[i:i+self.batch_size, :self.window_size], start_batch_at = i)
+            y_batch = self.model.predict_df(
+                df=x_batch,
+                prediction_length=self.pred_len,
+                quantile_levels=[0.5],
+                id_column="item_id",
+                timestamp_column="timestamp",
+                target=self.target,
+            )
+            
+            y_batch = y_batch.sort_values(["item_id", "timestamp"])
+            preds = np.stack(
+                y_batch.groupby("item_id", sort=False)["predictions"]
+                .apply(lambda s: s.to_numpy())
+                .to_list()
+            )
+            outs.append(preds)
+
+        return np.concatenate(outs, axis=0)
+
+
+    def convert_to_df(self, x_batch, start_batch_at=0):
+        n_windows_in_batch, window_size, n_features = x_batch.shape
+       
+        rows = []
+        for window in range(n_windows_in_batch):
+            for data_entry in range(window_size):
+                rows.append({
+                    "timestamp": self.start_time + self.time_interval * data_entry,
+                    "item_id": f"window_{start_batch_at + window}",
+                    **{f"{i}": x_batch[window, data_entry, i] for i in range(n_features)}
+                })
+
+        rows = pd.DataFrame(rows)
+        return rows
+
+
+if __name__ == "__main__":
+    chronos2 = Chronos2()
+    X = np.random.rand(100, 256, 10)
+    y = chronos2.predict(X)
+    print(y.shape)
+    print(y)
