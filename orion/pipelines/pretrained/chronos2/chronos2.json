@@ -10,12 +10,12 @@
     "init_params": {
         "mlstars.custom.timeseries_preprocessing.time_segments_aggregate#1": {
             "time_column": "timestamp",
-            "interval": 600,
+            "interval": 21600,
             "method": "mean"
         },
         "mlstars.custom.timeseries_preprocessing.rolling_window_sequences#1": {
             "target_column": 0,
-            "window_size": 256
+            "window_size": 250
         },
         "orion.primitives.timeseries_anomalies.find_anomalies#1": {
             "window_size_portion": 0.33,

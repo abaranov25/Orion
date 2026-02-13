@@ -13,23 +13,7 @@ import sys
 import torch
 import numpy as np
 import pandas as pd
-# if sys.version_info < (3, 11):
-#     msg = (
-#         '`timesfm` requires Python >= 3.11 and your '
-#         f'python version is {sys.version}.\n'
-#         'Make sure you are using Python 3.11 or later.\n'
-#     )
-#     raise RuntimeError(msg)
-
-try:
-    from chronos import Chronos2Pipeline
-except ImportError as ie:
-    ie.msg += (
-        '\n\nIt seems like `chronos` is not installed.\n'
-        'Please install `chronos` using:\n'
-        '\n    pip install chronos'
-    )
-    raise
+from chronos import Chronos2Pipeline
 
 
 class Chronos2:
@@ -126,11 +110,3 @@ class Chronos2:
 
         rows = pd.DataFrame(rows)
         return rows
-
-
-if __name__ == "__main__":
-    chronos2 = Chronos2()
-    X = np.random.rand(100, 256, 10)
-    y = chronos2.predict(X)
-    print(y.shape)
-    print(y)
