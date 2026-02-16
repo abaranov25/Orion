@@ -20,19 +20,12 @@ class Chronos2:
     """Chronos2 model for timeseries forecasting.
 
     Args:
-        window_size (int):
-            Window size of each sample. Default to 256.
-        step (int):
-            Stride length between samples. Default to 1.
         pred_len (int):
             Prediction horizon length. Default to 1.
         repo_id (str):
             Directory of the model checkpoint. Default to "amazon/chronos-2"
         batch_size(int):
             Size of one batch. Default to 32.
-        freq (int):
-            Frequency. TimesFM expects a categorical indicator valued in {0, 1, 2}.
-            Default to 0.
         target (int):
             Index of target column in multivariate case. Default to 0.
         start_time (datetime):
@@ -42,7 +35,6 @@ class Chronos2:
     """
 
     def __init__(self,
-                 window_size=256,
                  pred_len=1,
                  repo_id="amazon/chronos-2",
                  batch_size=32,
@@ -50,7 +42,6 @@ class Chronos2:
                  start_time=pd.to_datetime("2000-01-01 00:00:00"),
                  time_interval=600):
 
-        self.window_size = window_size
         self.pred_len = pred_len
         self.batch_size = batch_size
         self.target = f"{target}"
@@ -65,7 +56,7 @@ class Chronos2:
 
         Args:
             X (ndarray):
-                input timeseries.
+                input timeseries with shape (n_windows, window_size, n_features).
         Return:
             ndarray:
                 forecasted timeseries.
@@ -75,7 +66,7 @@ class Chronos2:
         outs = []
 
         for i in range(0, n_windows, self.batch_size):
-            x_batch = self.convert_to_df(X[i:i+self.batch_size, :self.window_size], start_batch_at = i)
+            x_batch = self.convert_to_df(X[i:i+self.batch_size], start_batch_at = i)
             y_batch = self.model.predict_df(
                 df=x_batch,
                 prediction_length=self.pred_len,

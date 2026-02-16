@@ -33,10 +33,6 @@
     },
     "hyperparameters": {
         "fixed": {
-            "window_size": {
-                "type": "int",
-                "default": 256
-            },
             "pred_len": {
                 "type": "int",
                 "default": 1
