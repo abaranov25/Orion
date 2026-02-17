@@ -3,9 +3,6 @@ This primitive is an implementation of Cisco's Time Series Foundation Model for 
 
 The model implementation can be found at
 https://arxiv.org/pdf/2511.19841
-
-This version is completely standalone - no external dependencies on vendored code or other modules.
-All necessary code is included directly in this file.
 """
 
 import os
@@ -17,10 +14,6 @@ from huggingface_hub import snapshot_download
 from timesfm import pytorch_patched_decoder as ppd
 from timesfm.timesfm_base import strip_leading_nans, linear_interpolation
 
-
-# ============================================================================
-# Context Building Functions
-# ============================================================================
 
 def build_coarse_context(series: np.ndarray, max_coarse_ctx: int = 512, block: int = 60):
     """
