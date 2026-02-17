@@ -4,7 +4,7 @@
         "Allen Baranov <baranov@mit.edu>"
     ],
     "documentation": "https://arxiv.org/pdf/2511.19841",
-    "description": "Cisco Time Series Foundation Model for timeseries forecasting",
+    "description": "Cisco Time Series Foundation Model for timeseries forecasting (standalone implementation)",
     "classifiers": {
         "type": "estimator",
         "subtype": "regressor"
@@ -34,22 +34,22 @@
             },
             "pred_len": {
                 "type": "int",
-                "default": 1
+                "default": 128
             },
             "repo_id": {
                 "type": "str",
                 "default": "cisco-ai/cisco-time-series-model-1.0-preview"
             },
-            "batch_size": {
+            "agg_factor": {
                 "type": "int",
-                "default": 32
+                "default": 60
             },
             "target": {
                 "type": "int",
                 "default": 0
             },
             "return_quantile": {
-                "type": "float",
+                "type": "str",
                 "default": null
             }
         }
