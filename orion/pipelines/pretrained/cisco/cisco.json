@@ -3,7 +3,7 @@
         "mlstars.custom.timeseries_preprocessing.time_segments_aggregate",
         "sklearn.impute.SimpleImputer",
         "mlstars.custom.timeseries_preprocessing.rolling_window_sequences",
-        "orion.primitives.chronos2.Chronos2",
+        "orion.primitives.cisco.Cisco",
         "orion.primitives.timeseries_errors.regression_errors",
         "orion.primitives.timeseries_anomalies.find_anomalies"
     ],
@@ -15,12 +15,15 @@
         },
         "mlstars.custom.timeseries_preprocessing.rolling_window_sequences#1": {
             "target_column": 0,
-            "window_size": 256
+            "window_size": 30720,
+            "step_size": 16
         },
         "orion.primitives.timeseries_anomalies.find_anomalies#1": {
             "window_size_portion": 0.33,
             "window_step_size_portion": 0.1,
-            "fixed_threshold": true
+            "fixed_threshold": true,
+            "window_size": 250,
+            "window_step_size": 40
         }
     },
     "input_names": {
