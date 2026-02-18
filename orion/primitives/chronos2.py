@@ -4,15 +4,14 @@ This primitive an implementation of Amazon's Chronos2 model for timeseries forec
 The model implementation can be found at
 https://huggingface.co/amazon/chronos-2
 
-Note: This primitive assumes that Chronos2 doesn't care about specific timestamps 
+Note: This primitive assumes that Chronos2 doesn't care about specific timestamps
 of the data. We fill in the timestamps with a linear sequence of timestamps in order
 for the model to work.
 """
 
-import sys
-import torch
 import numpy as np
 import pandas as pd
+import torch
 from chronos import Chronos2Pipeline
 
 
@@ -66,7 +65,7 @@ class Chronos2:
         outs = []
 
         for i in range(0, n_windows, self.batch_size):
-            x_batch = self.convert_to_df(X[i:i+self.batch_size], start_batch_at = i)
+            x_batch = self.convert_to_df(X[i:i + self.batch_size], start_batch_at=i)
             y_batch = self.model.predict_df(
                 df=x_batch,
                 prediction_length=self.pred_len,
@@ -75,7 +74,7 @@ class Chronos2:
                 timestamp_column="timestamp",
                 target=self.target,
             )
-            
+
             y_batch = y_batch.sort_values(["item_id", "timestamp"])
             preds = np.stack(
                 y_batch.groupby("item_id", sort=False)["predictions"]
@@ -86,10 +85,9 @@ class Chronos2:
 
         return np.concatenate(outs, axis=0)
 
-
     def convert_to_df(self, x_batch, start_batch_at=0):
         n_windows_in_batch, window_size, n_features = x_batch.shape
-       
+
         rows = []
         for window in range(n_windows_in_batch):
             for data_entry in range(window_size):
