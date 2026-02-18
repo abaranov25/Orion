@@ -1,5 +1,6 @@
 """
-This primitive is an implementation of Cisco's Time Series Foundation Model for timeseries forecasting.
+This primitive is an implementation of Cisco's Time Series
+Foundation Model for timeseries forecasting.
 
 The model implementation can be found at
 https://arxiv.org/pdf/2511.19841
@@ -9,10 +10,11 @@ import os
 
 import numpy as np
 import torch
+from torch import nn
+
 from huggingface_hub import snapshot_download
 from timesfm import pytorch_patched_decoder as ppd
 from timesfm.timesfm_base import linear_interpolation, strip_leading_nans
-from torch import nn
 
 
 def build_coarse_context(series: np.ndarray, max_coarse_ctx: int = 512, block: int = 60):
@@ -64,8 +66,10 @@ def build_fine_context(series: np.ndarray, fine_len: int = 512):
     return series[-fine_len:]
 
 
-def build_multi_resolution_context(
-        series: np.ndarray, agg_factor: int = 60, max_coarse_ctx: int = 512, max_fine_ctx: int = 512):
+def build_multi_resolution_context(series: np.ndarray,
+                                   agg_factor: int = 60,
+                                   max_coarse_ctx: int = 512,
+                                   max_fine_ctx: int = 512) -> tuple[list[float], list[float]]:
     """
     Build both coarse and fine resolution contexts from a time series.
     This is the main function for creating multi-resolution inputs for TimesFM.
@@ -217,7 +221,9 @@ class CiscoInference:
         Returns:
             List of dicts with 'mean' and 'quantiles'
         """
-        assert horizon_len <= self.config.horizon_len, f"horizon_len must be <= model horizon {self.config.horizon_len}"
+        assert horizon_len <= self.config.horizon_len, (
+            f"horizon_len must be <= model horizon {self.config.horizon_len}"
+        )
 
         results = []
 
@@ -280,9 +286,11 @@ class CiscoInference:
                 token_pred = preds[:, fine_token_idx, :horizon_len, :]
 
                 token_np = token_pred[0].cpu().numpy()
+                quantiles = {str(q): token_np[:, i + 1]
+                             for i, q in enumerate(self.config.quantiles)}
                 results.append({
                     "mean": token_np[:, 0],
-                    "quantiles": {str(q): token_np[:, i + 1] for i, q in enumerate(self.config.quantiles)},
+                    "quantiles": quantiles,
                 })
 
         return results
