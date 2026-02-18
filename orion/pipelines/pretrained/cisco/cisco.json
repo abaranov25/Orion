@@ -10,7 +10,7 @@
     "init_params": {
         "mlstars.custom.timeseries_preprocessing.time_segments_aggregate#1": {
             "time_column": "timestamp",
-            "interval": 600,
+            "interval": 21600,
             "method": "mean"
         },
         "mlstars.custom.timeseries_preprocessing.rolling_window_sequences#1": {
