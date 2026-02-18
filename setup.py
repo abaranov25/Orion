@@ -49,7 +49,7 @@ pretrained_requires = [
     "jax;python_version>='3.11'",
 
     #chronos2
-    'chronos',
+    'chronos-forecasting>=2.2.0,<2.3.0',
 
     'wrapt>=1.14,<1.15',
 ]
