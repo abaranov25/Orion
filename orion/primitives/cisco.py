@@ -6,56 +6,56 @@ https://arxiv.org/pdf/2511.19841
 """
 
 import os
+
 import numpy as np
 import torch
-from torch import nn
 from huggingface_hub import snapshot_download
-
 from timesfm import pytorch_patched_decoder as ppd
-from timesfm.timesfm_base import strip_leading_nans, linear_interpolation
+from timesfm.timesfm_base import linear_interpolation, strip_leading_nans
+from torch import nn
 
 
 def build_coarse_context(series: np.ndarray, max_coarse_ctx: int = 512, block: int = 60):
     """
     Construct coarse (long-term) context by aggregating fine samples.
-    
+
     Takes the rightmost (max_coarse_ctx * block) raw samples, partitions them
     into consecutive non-overlapping blocks, and computes the mean of each block.
-    
+
     Args:
         series: Array of fine-resolution time series data.
         max_coarse_ctx: Maximum number of coarse points to return (default: 512).
         block: Number of fine samples to aggregate into one coarse sample (default: 60).
             For example, block=60 aggregates 60 minutes into 1 hour.
-    
+
     Returns:
         List of floats representing coarse means with length <= max_coarse_ctx.
     """
     needed_raw = max_coarse_ctx * block
     raw_slice = series[-needed_raw:]
-    
+
     remainder = len(raw_slice) % block
     if remainder != 0:
-        raw_slice = raw_slice[remainder:] 
-    
+        raw_slice = raw_slice[remainder:]
+
     coarse = []
     for i in range(0, len(raw_slice), block):
-        block_vals = raw_slice[i:i+block]
+        block_vals = raw_slice[i:i + block]
         if len(block_vals) < block:
             break
         coarse.append(float(np.mean(block_vals)))
-    
+
     return coarse[-max_coarse_ctx:]
 
 
 def build_fine_context(series: np.ndarray, fine_len: int = 512):
     """
     Extract fine (short-term) context from the rightmost samples.
-    
+
     Args:
         series: Array of fine-resolution time series data.
         fine_len: Desired length of fine-level context to extract (default: 512).
-    
+
     Returns:
         List of floats representing the fine-level context of length <= fine_len.
     """
@@ -64,18 +64,19 @@ def build_fine_context(series: np.ndarray, fine_len: int = 512):
     return series[-fine_len:]
 
 
-def build_multi_resolution_context(series: np.ndarray, agg_factor: int = 60, max_coarse_ctx: int = 512,max_fine_ctx: int = 512):
+def build_multi_resolution_context(
+        series: np.ndarray, agg_factor: int = 60, max_coarse_ctx: int = 512, max_fine_ctx: int = 512):
     """
     Build both coarse and fine resolution contexts from a time series.
     This is the main function for creating multi-resolution inputs for TimesFM.
-    
+
     Args:
         series: Array of fine-resolution time series data.
         agg_factor: Aggregation factor to form coarse context from fine context
             (default: 60, e.g., minutes to hours).
         max_coarse_ctx: Maximum number of coarse points (default: 512).
         max_fine_ctx: Maximum number of fine points (default: 512).
-    
+
     Returns:
         Tuple of:
             - coarse_ctx: List of floats representing the coarse (long-term) context.
@@ -87,13 +88,13 @@ def build_multi_resolution_context(series: np.ndarray, agg_factor: int = 60, max
         block=agg_factor
     )
     fine_ctx = build_fine_context(series, fine_len=max_fine_ctx)
-    
+
     return coarse_ctx, fine_ctx
 
 
 class MinimalCiscoModel(ppd.PatchedTimeSeriesDecoder):
     """Multi-resolution TimesFM with resolution embeddings and special token."""
-    
+
     def __init__(self, config):
         super().__init__(config)
         self.multi_resolution = nn.Embedding(2, config.hidden_size)
@@ -117,12 +118,13 @@ class MinimalCiscoModel(ppd.PatchedTimeSeriesDecoder):
         mu_f = stats_fine[0].to(dtype).reshape(B, -1)[:, 0]
         sg_f = stats_fine[1].to(dtype).reshape(B, -1)[:, 0]
 
-        
-        outputs[:, 0:N_coarse, :, :] = outputs[:, 0:N_coarse, :, :] * sg_c.view(B, 1, 1, 1) + mu_c.view(B, 1, 1, 1)
+        outputs[:, 0:N_coarse, :, :] = outputs[:, 0:N_coarse, :, :] * \
+            sg_c.view(B, 1, 1, 1) + mu_c.view(B, 1, 1, 1)
 
         s1 = N_coarse + 1
         e1 = N_coarse + 1 + N_fine
-        outputs[:, s1:e1, :, :] = outputs[:, s1:e1, :, :] * sg_f.view(B, 1, 1, 1) + mu_f.view(B, 1, 1, 1)
+        outputs[:, s1:e1, :, :] = outputs[:, s1:e1, :, :] * \
+            sg_f.view(B, 1, 1, 1) + mu_f.view(B, 1, 1, 1)
 
         return outputs
 
@@ -131,11 +133,11 @@ def preprocess_series(series, agg_factor=60):
     """
     Return RAW (not normalized) padded contexts + pad masks.
     Let timesfm `_preprocess_input` do its own normalization and return stats.
-    
+
     Args:
         series: 1D numpy array
         agg_factor: Aggregation factor (default 60 = minute->hour)
-    
+
     Returns:
         coarse, coarse_mask, fine, fine_mask
     """
@@ -206,12 +208,12 @@ class CiscoInference:
     def forecast(self, series_list, horizon_len=128, agg_factor=60):
         """
         Forecast time series.
-        
+
         Args:
             series_list: List of 1D numpy arrays
             horizon_len: Steps to forecast (default 128)
             agg_factor: Aggregation factor (default 60)
-        
+
         Returns:
             List of dicts with 'mean' and 'quantiles'
         """
@@ -224,20 +226,22 @@ class CiscoInference:
                 if not isinstance(series, np.ndarray):
                     series = np.array(series, dtype=np.float32)
 
-                coarse_raw, c_padmask, fine_raw, f_padmask = preprocess_series(series, agg_factor=agg_factor)
+                coarse_raw, c_padmask, fine_raw, f_padmask = preprocess_series(
+                    series, agg_factor=agg_factor)
 
-                coarse = coarse_raw.unsqueeze(0).unsqueeze(-1).to(self.device)  
-                c_pad  = c_padmask.unsqueeze(0).unsqueeze(-1).to(self.device)    
-                fine   = fine_raw.unsqueeze(0).unsqueeze(-1).to(self.device)
-                f_pad  = f_padmask.unsqueeze(0).unsqueeze(-1).to(self.device)
+                coarse = coarse_raw.unsqueeze(0).unsqueeze(-1).to(self.device)
+                c_pad = c_padmask.unsqueeze(0).unsqueeze(-1).to(self.device)
+                fine = fine_raw.unsqueeze(0).unsqueeze(-1).to(self.device)
+                f_pad = f_padmask.unsqueeze(0).unsqueeze(-1).to(self.device)
 
-                coarse_proc, c_pad_proc, stats_coarse, _ = self.model._preprocess_input(coarse, c_pad)
-                fine_proc,   f_pad_proc, stats_fine, _   = self.model._preprocess_input(fine, f_pad)
+                coarse_proc, c_pad_proc, stats_coarse, _ = self.model._preprocess_input(
+                    coarse, c_pad)
+                fine_proc, f_pad_proc, stats_fine, _ = self.model._preprocess_input(fine, f_pad)
 
-                B = coarse_proc.shape[0]   
+                B = coarse_proc.shape[0]
                 N_coarse = coarse_proc.shape[1]
-                N_fine   = fine_proc.shape[1]
-                D        = coarse_proc.shape[2]
+                N_fine = fine_proc.shape[1]
+                D = coarse_proc.shape[2]
 
                 # padding must be 2D [B,N] for stacked_transformer
                 if c_pad_proc.ndim == 3:
@@ -246,15 +250,15 @@ class CiscoInference:
                     f_pad_proc = f_pad_proc.squeeze(-1)
 
                 spec_token = self.model.special_token.expand(B, 1, D)
-                spec_pad   = torch.zeros(B, 1, device=self.device, dtype=c_pad_proc.dtype)
+                spec_pad = torch.zeros(B, 1, device=self.device, dtype=c_pad_proc.dtype)
 
                 model_input = torch.cat([coarse_proc, spec_token, fine_proc], dim=1)
-                padding     = torch.cat([c_pad_proc, spec_pad, f_pad_proc], dim=1)
+                padding = torch.cat([c_pad_proc, spec_pad, f_pad_proc], dim=1)
 
                 res_ids = torch.cat([
                     torch.zeros(N_coarse, dtype=torch.long, device=self.device),
-                    torch.zeros(1,       dtype=torch.long, device=self.device),
-                    torch.ones(N_fine,   dtype=torch.long, device=self.device),
+                    torch.zeros(1, dtype=torch.long, device=self.device),
+                    torch.ones(N_fine, dtype=torch.long, device=self.device),
                 ]).unsqueeze(0).expand(B, -1)
 
                 model_input = model_input + self.model.multi_resolution(res_ids)
@@ -266,7 +270,7 @@ class CiscoInference:
                 logits = self.model.horizon_ff_layer(output)
 
                 num_outputs = len(self.config.quantiles) + 1
-                preds = logits.view(B, -1, self.config.horizon_len, num_outputs)  
+                preds = logits.view(B, -1, self.config.horizon_len, num_outputs)
 
                 preds = self.model.reverse_transform_two_segments(
                     preds, stats_coarse, stats_fine, N_coarse, N_fine
@@ -309,7 +313,7 @@ class Cisco:
 
     def __init__(
         self,
-        window_size=30720, 
+        window_size=30720,
         pred_len=128,
         repo_id="cisco-ai/cisco-time-series-model-1.0-preview",
         agg_factor=60,
