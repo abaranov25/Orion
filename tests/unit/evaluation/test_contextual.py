@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-import pytest
 
+import pytest
 from orion.evaluation.contextual import (
     _contextual_partition, _overlap_segment, contextual_accuracy, contextual_confusion_matrix,
     contextual_f1_score, contextual_precision, contextual_recall)

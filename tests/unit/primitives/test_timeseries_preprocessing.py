@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
-import pytest
 from numpy.testing import assert_array_equal
 
+import pytest
 from orion.primitives.timeseries_preprocessing import fillna, slice_array_by_dims
 
 

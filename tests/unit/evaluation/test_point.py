@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-import pytest
 
+import pytest
 from orion.evaluation.point import (
     _point_partition, point_accuracy, point_confusion_matrix, point_f1_score, point_precision,
     point_recall)
