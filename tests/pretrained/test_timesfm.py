@@ -3,8 +3,8 @@ import unittest
 from unittest.mock import patch
 
 import numpy as np
-import timesfm as tf
 
+import timesfm as tf
 from orion.primitives.timesfm import MAX_LENGTH, TimesFM
 
 

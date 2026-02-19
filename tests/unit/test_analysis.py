@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
+import pytest
 from mlblocks import MLPipeline
 
-import pytest
 from orion import analysis
 
 

@@ -3,10 +3,10 @@ import os
 from unittest.mock import call, patch
 
 import pandas as pd
+import pytest
 from mlblocks import MLPipeline
 from mlblocks.discovery import load_pipeline
 
-import pytest
 from orion import functional
 from orion.core import Orion
 

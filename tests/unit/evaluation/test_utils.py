@@ -1,6 +1,6 @@
 import pandas as pd
-
 import pytest
+
 from orion.evaluation.utils import (
     from_list_points_labels, from_list_points_timestamps, from_pandas_contextual,
     from_pandas_points, from_pandas_points_labels)
